@@ -1,0 +1,293 @@
+-- Enhanced RONS SCRIPT for Grow A Garden (Growtopia)
+-- Mobile & Desktop draggable, circular minimize button with "R"
+-- Teleport in front of player, improved invincibility toggle
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "RONS_SCRIPT"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 220, 0, 350)
+mainFrame.Position = UDim2.new(0, 20, 0, 20)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+titleBar.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Text = "RONS SCRIPT"
+titleLabel.Size = UDim2.new(1, -40, 1, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = Color3.new(1,1,1)
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextSize = 18
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Position = UDim2.new(0, 10, 0, 0)
+titleLabel.Parent = titleBar
+
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -35, 0, 0)
+minimizeBtn.Text = "R"
+minimizeBtn.Font = Enum.Font.SourceSansBold
+minimizeBtn.TextSize = 20
+minimizeBtn.TextColor3 = Color3.new(1,1,1)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+minimizeBtn.BorderSizePixel = 0
+minimizeBtn.Parent = titleBar
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0.5, 0)
+corner.Parent = minimizeBtn
+
+local playerListFrame = Instance.new("ScrollingFrame")
+playerListFrame.Size = UDim2.new(1, -20, 1, -160)
+playerListFrame.Position = UDim2.new(0, 10, 0, 40)
+playerListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+playerListFrame.BorderSizePixel = 0
+playerListFrame.ScrollBarThickness = 6
+playerListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+playerListFrame.Parent = mainFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 5)
+listLayout.Parent = playerListFrame
+
+local buttonsFrame = Instance.new("Frame")
+buttonsFrame.Size = UDim2.new(1, -20, 0, 110)
+buttonsFrame.Position = UDim2.new(0, 10, 1, -115)
+buttonsFrame.BackgroundTransparency = 1
+buttonsFrame.Parent = mainFrame
+
+local teleportBtn = Instance.new("TextButton")
+teleportBtn.Size = UDim2.new(1, 0, 0, 32)
+teleportBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+teleportBtn.TextColor3 = Color3.new(1,1,1)
+teleportBtn.Font = Enum.Font.SourceSansBold
+teleportBtn.TextSize = 18
+teleportBtn.Text = "Teleport to Player"
+teleportBtn.Parent = buttonsFrame
+
+local invincibleBtn = Instance.new("TextButton")
+invincibleBtn.Size = UDim2.new(1, 0, 0, 32)
+invincibleBtn.Position = UDim2.new(0, 0, 0, 37)
+invincibleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+invincibleBtn.TextColor3 = Color3.new(1,1,1)
+invincibleBtn.Font = Enum.Font.SourceSansBold
+invincibleBtn.TextSize = 18
+invincibleBtn.Text = "Invincible: OFF"
+invincibleBtn.Parent = buttonsFrame
+
+local refreshBtn = Instance.new("TextButton")
+refreshBtn.Size = UDim2.new(1, 0, 0, 32)
+refreshBtn.Position = UDim2.new(0, 0, 0, 74)
+refreshBtn.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
+refreshBtn.TextColor3 = Color3.new(1,1,1)
+refreshBtn.Font = Enum.Font.SourceSansBold
+refreshBtn.TextSize = 18
+refreshBtn.Text = "Refresh Player List"
+refreshBtn.Parent = buttonsFrame
+
+local selectedPlayer = nil
+local invincible = false
+local invincibleConnection = nil
+
+local function clearPlayerButtons()
+    for _, child in pairs(playerListFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+end
+
+local function createPlayerButtons()
+    clearPlayerButtons()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, 30)
+            btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.Font = Enum.Font.SourceSans
+            btn.TextSize = 18
+            btn.Text = player.Name
+            btn.Parent = playerListFrame
+
+            btn.MouseButton1Click:Connect(function()
+                selectedPlayer = player
+                for _, b in pairs(playerListFrame:GetChildren()) do
+                    if b:IsA("TextButton") then
+                        b.BackgroundColor3 = Color3.fromRGB(70,70,70)
+                    end
+                end
+                btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+            end)
+
+            btn.MouseEnter:Connect(function()
+                btn.BackgroundColor3 = Color3.fromRGB(90,90,90)
+            end)
+            btn.MouseLeave:Connect(function()
+                if selectedPlayer == player then
+                    btn.BackgroundColor3 = Color3.fromRGB(0,170,255)
+                else
+                    btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+                end
+            end)
+        end
+    end
+end
+
+local function teleportToPlayer()
+    if not selectedPlayer then
+        warn("No player selected!")
+        return
+    end
+    local char = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        warn("HumanoidRootPart not found!")
+        return
+    end
+    if selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local targetHRP = selectedPlayer.Character.HumanoidRootPart
+        local frontCFrame = targetHRP.CFrame * CFrame.new(0, 0, -3)
+        hrp.CFrame = frontCFrame
+        print("Teleported to front of player:", selectedPlayer.Name)
+    else
+        warn("Selected player character not found!")
+    end
+end
+
+local function toggleInvincible()
+    local char = localPlayer.Character
+    if not char then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+
+    invincible = not invincible
+
+    if invincible then
+        invincibleBtn.Text = "Invincible: ON"
+        invincibleBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 85)
+
+        humanoid.MaxHealth = math.huge
+        humanoid.Health = math.huge
+
+        if invincibleConnection then
+            invincibleConnection:Disconnect()
+        end
+        invincibleConnection = humanoid.HealthChanged:Connect(function()
+            if humanoid.Health < humanoid.MaxHealth then
+                humanoid.Health = humanoid.MaxHealth
+            end
+        end)
+
+        humanoid.PlatformStand = false
+    else
+        invincibleBtn.Text = "Invincible: OFF"
+        invincibleBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+
+        humanoid.MaxHealth = 100
+        humanoid.Health = humanoid.MaxHealth
+
+        if invincibleConnection then
+            invincibleConnection:Disconnect()
+            invincibleConnection = nil
+        end
+    end
+end
+
+local function refreshPlayerList()
+    createPlayerButtons()
+    print("Player list refreshed!")
+end
+
+local minimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+    minimized = not minimized
+    if minimized then
+        mainFrame.Size = UDim2.new(0, 220, 0, 30)
+        playerListFrame.Visible = false
+        buttonsFrame.Visible = false
+    else
+        mainFrame.Size = UDim2.new(0, 220, 0, 350)
+        playerListFrame.Visible = true
+        buttonsFrame.Visible = true
+    end
+end)
+
+local dragging = false
+local dragInput = nil
+local dragStart = nil
+local startPos = nil
+
+local function update(input)
+    local delta = input.Position - dragStart
+    local newX = math.clamp(startPos.X.Offset + delta.X, 0, screenGui.AbsoluteSize.X - mainFrame.AbsoluteSize.X)
+    local newY = math.clamp(startPos.Y.Offset + delta.Y, 0, screenGui.AbsoluteSize.Y - mainFrame.AbsoluteSize.Y)
+    mainFrame.Position = UDim2.new(0, newX, 0, newY)
+end
+
+mainFrame.InputBegan:Connect(function(input)
+    if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not minimized then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+mainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+local function addHoverEffect(button, normalColor, hoverColor)
+    button.MouseEnter:Connect(function() button.BackgroundColor3 = hoverColor end)
+    button.MouseLeave:Connect(function() button.BackgroundColor3 = normalColor end)
+end
+
+addHoverEffect(teleportBtn, Color3.fromRGB(0,170,255), Color3.fromRGB(200,220,255))
+addHoverEffect(invincibleBtn, Color3.fromRGB(255,85,85), Color3.fromRGB(255,170,170))
+addHoverEffect(refreshBtn, Color3.fromRGB(85,255,85), Color3.fromRGB(170,255,170))
+addHoverEffect(minimizeBtn, Color3.fromRGB(50,50,50), Color3.fromRGB(70,70,70))
+
+teleportBtn.MouseButton1Click:Connect(teleportToPlayer)
+invincibleBtn.MouseButton1Click:Connect(toggleInvincible)
+refreshBtn.MouseButton1Click:Connect(refreshPlayerList)
+
+Players.PlayerAdded:Connect(createPlayerButtons)
+Players.PlayerRemoving:Connect(function()
+    if selectedPlayer and not Players:FindFirstChild(selectedPlayer.Name) then
+        selectedPlayer = nil
+    end
+    createPlayerButtons()
+end)
+
+createPlayerButtons()
+
+print("RONS SCRIPT loaded! Drag to move (mobile & desktop), features enhanced.")
